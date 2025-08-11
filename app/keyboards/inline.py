@@ -79,3 +79,19 @@ incomes_menu = InlineKeyboardMarkup(
         [InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")],
     ]
 )
+
+
+text_report = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [InlineKeyboardButton(text="К статистике", callback_data="stats_menu")],
+        [InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")],
+    ]
+)
+
+
+report = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [InlineKeyboardButton(text="К статистике", callback_data="stats_menu")],
+        [InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")],
+    ]
+)

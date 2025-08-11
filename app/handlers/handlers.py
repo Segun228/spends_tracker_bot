@@ -13,11 +13,14 @@ from app.states.states import Expense, Income
 
 from app.handlers.templates import default_expenses, default_incomes
 
+from aiogram.types import BufferedInputFile
+
 from app.requests.get_cat_error import get_cat_error_async as get_cat_error
 from app.requests.login import login
 from app.requests.delete_account import delete_account
 from app.requests.get_categories import get_categories
-
+from app.requests.get_text_report import get_text_report
+from app.requests.get_visual_report import get_visual_report
 
 
 #TODO получение аналитических сводок
@@ -41,6 +44,7 @@ async def cmd_start(message: Message, state: FSMContext):
     await message.reply("Привет! 👋")
     await message.reply("Я твой личный финансовый консультант")
     await message.answer("Я много что умею 👇", reply_markup=inline_keyboards.main)
+    await set_user_info(message=message, state = state)
 
 @router.callback_query(F.data == "restart")
 async def callback_start(callback: CallbackQuery, state: FSMContext):
@@ -138,15 +142,85 @@ async def stats_menu_callback(callback:CallbackQuery):
 
 
 @router.callback_query(F.data == "written_report")
-async def written_report_callback(callback:CallbackQuery):
-    await callback.message.answer("Вот ваш отчет!")
-    await callback.message.answer("Заглушка отчета", reply_markup=inline_keyboards.report)
+async def written_report_callback(callback:CallbackQuery, state:FSMContext):
+    stats_data = await get_text_report(telegram_id=callback.from_user.id)
+    if stats_data is None:
+        await callback.message.answer(text="Извините, сейчас не можем создать вам статистику", reply_markup=inline_keyboards.home)
+        return
+    total_expenses = stats_data['expenses']['total']['total_expenses']
+    total_incomes = stats_data['incomes']['total']['total_incomes']
+    total_profit = stats_data['profit']['total']['total_profit']
+    
+    total_year_expenses = stats_data['expenses']['total']['total_year_expenses']
+    total_year_incomes = stats_data['incomes']['total']['total_year_incomes']
+    total_year_profit = stats_data['profit']['total']['total_year_profit']
+    
+    total_month_expenses = stats_data['expenses']['total']['total_month_expenses']
+    total_month_incomes = stats_data['incomes']['total']['total_month_incomes']
+    total_month_profit = stats_data['profit']['total']['total_month_profit']
+    
+    max_month_expense = stats_data['expenses']['max_month_expense']
+    max_year_expense = stats_data['expenses']['max_year_expense']
+    max_expense = stats_data['expenses']['max_expense']
+    ballance = stats_data['expenses']['ballance']
+    message_text = (
+        "📊 **Ваша финансовая аналитика:**\n\n"
+        "**Показатели:**\n"
+        f"💰 Балланс: `{ballance}`\n"
+        f"💸 Максимальная месячная трата: `{max_month_expense}`\n"
+        f"📈 Максимальная годовая трата: `{max_year_expense}`\n"
+        f"📈 Максимальная трата: `{max_expense}`\n\n"
+        "**Итог за последний месяц:**\n"
+        f"💰 Доходы: `{total_month_incomes}`\n"
+        f"💸 Расходы: `{total_month_expenses}`\n"
+        f"📈 Прибыль: `{total_month_profit}`\n"
+        "\n**Итог за последний год:**\n"
+        f"💰 Доходы: `{total_year_incomes}`\n"
+        f"💸 Расходы: `{total_year_expenses}`\n"
+        f"📈 Прибыль: `{total_year_profit}`\n\n"
+        "**Общий итог за всё время:**\n"
+        f"💰 Доходы: `{total_incomes}`\n"
+        f"💸 Расходы: `{total_expenses}`\n"
+        f"📈 Прибыль: `{total_profit}`\n\n"
+    )
+
+    await callback.message.answer(message_text, reply_markup=inline_keyboards.text_report, parse_mode="MarkdownV2")
+
+    all_expenses = stats_data['expenses']['records']['all_expenses_records']
+    year_expenses = stats_data['expenses']['records']['last_year_expenses_records']
+    month_expenses = stats_data['expenses']['records']['last_month_expenses_records']
+    
+    all_incomes = stats_data['incomes']['records']['all_income_records']
+    year_incomes = stats_data['incomes']['records']['last_year_income_records']
+    month_incomes = stats_data['incomes']['records']['last_month_income_records']
+    await state.update_data(all_expenses = all_expenses)
+    await state.update_data(year_expenses = year_expenses)
+    await state.update_data(month_expenses = month_expenses)
+    await state.update_data(all_incomes = all_incomes)
+    await state.update_data(year_incomes = year_incomes)
+    await state.update_data(month_incomes = month_incomes)
     await callback.answer()
 
 @router.callback_query(F.data == "visual_report")
 async def visual_report_callback(callback:CallbackQuery):
-    await callback.message.answer("Вот ваш отчет!")
-    await callback.message.answer("Заглушка visual_report", reply_markup=inline_keyboards.report)
+    image_bytes = await get_visual_report(telegram_id=callback.from_user.id)
+    if image_bytes is None:
+        logging.error("Failed to get visual report image from API.")
+        await callback.message.answer(
+            "К сожалению, не удалось сгенерировать отчёт.", 
+            reply_markup=inline_keyboards.report)
+        await callback.answer()
+        return
+
+    photo_file = BufferedInputFile(image_bytes, filename="report.png")
+
+    caption_text = "📊 Вот ваш визуальный отчёт о финансах!"
+    await callback.message.answer_photo(
+        photo=photo_file, 
+        caption=caption_text, 
+        reply_markup=inline_keyboards.report
+    )
+
     await callback.answer()
 #===========================================================================================================================
 # Заглушка
@@ -162,3 +236,21 @@ async def all_other_messages(message: Message):
 
 
 
+async def set_user_info(message:Message, state:FSMContext):
+    stats_data = await get_text_report(telegram_id=message.from_user.id)
+    if stats_data is None:
+        return
+
+    all_expenses = stats_data['expenses']['records']['all_expenses_records']
+    year_expenses = stats_data['expenses']['records']['last_year_expenses_records']
+    month_expenses = stats_data['expenses']['records']['last_month_expenses_records']
+    
+    all_incomes = stats_data['incomes']['records']['all_income_records']
+    year_incomes = stats_data['incomes']['records']['last_year_income_records']
+    month_incomes = stats_data['incomes']['records']['last_month_income_records']
+    await state.update_data(all_expenses = all_expenses)
+    await state.update_data(year_expenses = year_expenses)
+    await state.update_data(month_expenses = month_expenses)
+    await state.update_data(all_incomes = all_incomes)
+    await state.update_data(year_incomes = year_incomes)
+    await state.update_data(month_incomes = month_incomes)
