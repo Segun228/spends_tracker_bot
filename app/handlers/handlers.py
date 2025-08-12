@@ -75,7 +75,7 @@ async def contacts_callback(callback:CallbackQuery):
 
 @router.callback_query(F.data == "main_menu")
 async def main_menu_callback(callback:CallbackQuery):
-    await callback.message.edit_text("Я много что умею 👇", reply_markup=inline_keyboards.main)
+    await callback.message.answer("Я много что умею 👇", reply_markup=inline_keyboards.main)
     await callback.answer()
 
 #===========================================================================================================================
@@ -137,7 +137,7 @@ async def incomes_menu_callback(callback:CallbackQuery):
 
 @router.callback_query(F.data == "stats_menu")
 async def stats_menu_callback(callback:CallbackQuery):
-    await callback.message.edit_text("Что будем анализировать?", reply_markup=inline_keyboards.stats_menu)
+    await callback.message.answer("Что будем анализировать?", reply_markup=inline_keyboards.stats_menu)
     await callback.answer()
 
 
@@ -202,25 +202,34 @@ async def written_report_callback(callback:CallbackQuery, state:FSMContext):
     await callback.answer()
 
 @router.callback_query(F.data == "visual_report")
-async def visual_report_callback(callback:CallbackQuery):
-    image_bytes = await get_visual_report(telegram_id=callback.from_user.id)
-    if image_bytes is None:
-        logging.error("Failed to get visual report image from API.")
+async def visual_report_callback(callback: CallbackQuery):
+    image_bytes_list = await get_visual_report(telegram_id=callback.from_user.id)
+
+    if not image_bytes_list:
+        logging.error("Failed to get visual report images from API.")
         await callback.message.answer(
-            "К сожалению, не удалось сгенерировать отчёт.", 
+            "К сожалению, не удалось сгенерировать отчёт.",
             reply_markup=inline_keyboards.report)
         await callback.answer()
         return
-
-    photo_file = BufferedInputFile(image_bytes, filename="report.png")
-
+    
+    first_photo = BufferedInputFile(image_bytes_list[0], filename="report_1.png")
     caption_text = "📊 Вот ваш визуальный отчёт о финансах!"
     await callback.message.answer_photo(
-        photo=photo_file, 
-        caption=caption_text, 
-        reply_markup=inline_keyboards.report
+        photo=first_photo,
+        caption=caption_text
     )
 
+    for ind, photo_bytes in enumerate(image_bytes_list[1:], start=2):
+        if photo_bytes is None:
+            continue
+            
+        photo_file = BufferedInputFile(photo_bytes, filename=f"report_{ind}.png")
+        await callback.message.answer_photo(
+            photo=photo_file
+        )
+    await callback.message.answer("Готово!", reply_markup=inline_keyboards.report)
+    
     await callback.answer()
 #===========================================================================================================================
 # Заглушка
