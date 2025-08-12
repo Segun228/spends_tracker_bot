@@ -29,7 +29,7 @@ async def get_categories(telegram_id):
             headers=headers
         ) as response:
             if response.status in (200, 201, 202, 203):
-                logging.info(f"Пользователь с ID {telegram_id} успешно удален!")
+                logging.info("категории получены")
                 return await response.json()
             else:
                 return None

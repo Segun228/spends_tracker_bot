@@ -21,12 +21,14 @@ from app.requests.delete_account import delete_account
 from app.requests.get_categories import get_categories
 from app.requests.get_text_report import get_text_report
 from app.requests.get_visual_report import get_visual_report
+from app.requests.delete_last_expense import delete_last_expense
+from app.requests.delete_last_income import delete_last_income
+from app.requests.post_expense import post_expense
+from app.requests.post_income import post_income
+from app.requests.get_last_expense import get_last_expense
+from app.requests.get_last_income import get_last_income
 
 
-#TODO получение аналитических сводок
-#TODO создание активов и пассивов
-#TODO получение последних записей 
-#TODO удаление последних записей
 
 #===========================================================================================================================
 # Конфигурация основных маршрутов
@@ -38,11 +40,11 @@ async def cmd_start(message: Message, state: FSMContext):
     data = await login(telegram_id=message.from_user.id)
     if data is None:
         logging.error("Error while logging in")
-        await message.answer("Ошибка авторизации, попробуйте позже", reply_markup=inline_keyboards.restart)
+        await message.answer("Ошибка авторизации, попробуйте позже 😔", reply_markup=inline_keyboards.restart)
         return
     await state.update_data(telegram_id = data.get("telegram_id"))
     await message.reply("Привет! 👋")
-    await message.reply("Я твой личный финансовый консультант")
+    await message.reply("Я твой личный финансовый консультант 🧑‍💼")
     await message.answer("Я много что умею 👇", reply_markup=inline_keyboards.main)
     await set_user_info(message=message, state = state)
 
@@ -52,56 +54,52 @@ async def callback_start(callback: CallbackQuery, state: FSMContext):
     data = await login(telegram_id=callback.from_user.id)
     if data is None:
         logging.error("Error while logging in")
-        await callback.message.answer("Ошибка авторизации, попробуйте позже", reply_markup=inline_keyboards.restart)
+        await callback.message.answer("Ошибка авторизации, попробуйте позже 😔", reply_markup=inline_keyboards.restart)
         return
     await state.update_data(telegram_id = data.get("telegram_id"))
     await callback.message.reply("Привет! 👋")
-    await callback.message.reply("Я твой личный финансовый консультант")
+    await callback.message.reply("Я твой личный финансовый консультант 🧑‍💼")
     await callback.message.answer("Я много что умею 👇", reply_markup=inline_keyboards.main)
+    await callback.answer()
 
 @router.message(Command("help"))
 async def cmd_help(message: Message):
-    await message.reply(text="Этот бот помогает вести финансовый дневник и правильно планировать свой бюджет 📚\n\nОн может выполнять несколько интересных функций, связанных с дневником личных финансов.\n\nВам также доступны аналитические функции бота. Они представлены в разделе 'Статистика'\n\nЕсли остались вопросы, пиши ему: @dianabol_metandienon_enjoyer", reply_markup=inline_keyboards.home)
+    await message.reply(text="Этот бот помогает вести финансовый дневник и правильно планировать свой бюджет 📚\n\nОн может выполнять несколько интересных функций, связанных с дневником личных финансов.\n\nВам также доступны аналитические функции бота. Они представлены в разделе 'Статистика' 📈\n\nЕсли остались вопросы, пиши ему: @dianabol_metandienon_enjoyer", reply_markup=inline_keyboards.home)
+
 @router.message(Command("contacts"))
 async def cmd_contacts(message: Message):
     text = "Связь с разрабом: 📞\n\n\\@dianabol\\_metandienon\\_enjoyer 🤝\n\n[GitHub](https://github.com/Segun228)"
     await message.reply(text=text, reply_markup=inline_keyboards.home, parse_mode='MarkdownV2')
 
 @router.callback_query(F.data == "contacts")
-async def contacts_callback(callback:CallbackQuery):
+async def contacts_callback(callback: CallbackQuery):
     text = "Связь с разрабом: 📞\n\n\\@dianabol\\_metandienon\\_enjoyer 🤝\n\n[GitHub](https://github.com/Segun228)"
     await callback.message.edit_text(text=text, reply_markup=inline_keyboards.home, parse_mode='MarkdownV2')
     await callback.answer()
 
 @router.callback_query(F.data == "main_menu")
-async def main_menu_callback(callback:CallbackQuery):
+async def main_menu_callback(callback: CallbackQuery):
     await callback.message.answer("Я много что умею 👇", reply_markup=inline_keyboards.main)
     await callback.answer()
-
-#===========================================================================================================================
-# 
-#===========================================================================================================================
-
-
 
 #===========================================================================================================================
 # Взаимодействие с аккаунтом
 #===========================================================================================================================
 @router.callback_query(F.data == "account_menu")
-async def account_menu_callback(callback:CallbackQuery):
-    await callback.message.edit_text("Что вы хотите сделать с вашим аккаунтом?", reply_markup=inline_keyboards.account_menu)
+async def account_menu_callback(callback: CallbackQuery):
+    await callback.message.edit_text("Что вы хотите сделать с вашим аккаунтом? 👤", reply_markup=inline_keyboards.account_menu)
     await callback.answer()
 
 @router.callback_query(F.data == "delete_account_confirmation")
-async def delete_account_confirmation_callback(callback:CallbackQuery):
-    await callback.message.edit_text("Вы уверены что хотите удалить аккаунт? Восстановить записи будет невозможно...", reply_markup=inline_keyboards.delete_account_confirmation_menu)
+async def delete_account_confirmation_callback(callback: CallbackQuery):
+    await callback.message.edit_text("Вы уверены что хотите удалить аккаунт? 😳 Восстановить записи будет невозможно... 🗑️", reply_markup=inline_keyboards.delete_account_confirmation_menu)
     await callback.answer()
 
 @router.callback_query(F.data == "delete_account")
-async def delete_account_callback(callback:CallbackQuery, state:FSMContext):
+async def delete_account_callback(callback: CallbackQuery, state: FSMContext):
     await delete_account(telegram_id=callback.from_user.id)
     await state.clear()
-    await callback.message.edit_text("Аккаунт удален", reply_markup=inline_keyboards.restart)
+    await callback.message.edit_text("Аккаунт удален 😢", reply_markup=inline_keyboards.restart)
     await callback.answer()
 
 #===========================================================================================================================
@@ -109,26 +107,195 @@ async def delete_account_callback(callback:CallbackQuery, state:FSMContext):
 #===========================================================================================================================
 
 @router.callback_query(F.data == "diary_menu")
-async def diary_menu_callback(callback:CallbackQuery, state: FSMContext):
-    await callback.message.edit_text("Запишите ваши траты или доходы!", reply_markup=inline_keyboards.diary_menu)
+async def diary_menu_callback(callback: CallbackQuery, state: FSMContext):
+    await callback.message.edit_text("Запишите ваши траты или доходы! ✍️", reply_markup=inline_keyboards.diary_menu)
     categories = await get_categories(telegram_id=callback.from_user.id)
     if categories is None:
-        await state.update_data(expense_categories = default_expenses)
-        await state.update_data(income_categories = default_incomes)
+        await state.update_data(
+            expense_categories=default_expenses,
+            income_categories=default_incomes
+        )
     else:
-        await state.update_data(expense_categories = categories.get("expenses"))
-        await state.update_data(income_categories = categories.get("incomes"))
+        await state.update_data(
+            expense_categories=categories.get("expenses"),
+            income_categories=categories.get("incomes")
+        )
     await callback.answer()
 
 
 @router.callback_query(F.data == "expenses_menu")
-async def expenses_menu_callback(callback:CallbackQuery):
-    await callback.message.edit_text("Запишите ваши траты или доходы!", reply_markup=inline_keyboards.expenses_menu)
+async def expenses_menu_callback(callback: CallbackQuery, state: FSMContext):
+    categories = await get_categories(telegram_id=callback.from_user.id)
+    if categories is None:
+        await state.update_data(
+            expense_categories=default_expenses,
+            income_categories=default_incomes
+        )
+    else:
+        await state.update_data(
+            expense_categories=categories.get("expenses"),
+            income_categories=categories.get("incomes")
+        )
+    await callback.message.edit_text("Запишите ваши траты 🛒", reply_markup=inline_keyboards.expenses_menu)
     await callback.answer()
 
 @router.callback_query(F.data == "incomes_menu")
-async def incomes_menu_callback(callback:CallbackQuery):
-    await callback.message.edit_text("Запишите ваши траты или доходы!", reply_markup=inline_keyboards.incomes_menu)
+async def incomes_menu_callback(callback: CallbackQuery, state: FSMContext):
+    categories = await get_categories(telegram_id=callback.from_user.id)
+    if categories is None:
+        await state.update_data(
+            expense_categories=default_expenses,
+            income_categories=default_incomes
+        )
+    else:
+        await state.update_data(
+            expense_categories=categories.get("expenses"),
+            income_categories=categories.get("incomes")
+        )
+    await callback.message.edit_text("Запишите ваши доходы! 💸", reply_markup=inline_keyboards.incomes_menu)
+    await callback.answer()
+
+#===========================================================================================================================
+# Доходы
+#===========================================================================================================================
+
+@router.callback_query(F.data == "add_income")
+async def choose_income_category_callback(callback:CallbackQuery, state: FSMContext):
+    income_categories = (await state.get_data()).get("income_categories", default_incomes)
+    await callback.message.answer("Выберите категорию 💼", reply_markup= await inline_keyboards.get_inline_income_options(options=income_categories))
+    await callback.answer()
+
+@router.callback_query(F.data.startswith("income_"))
+async def add_income_category_callback(callback:CallbackQuery, state: FSMContext):
+    await state.set_state(Income.category_income)
+    category_slug = callback.data.split("_")[1]
+    await state.update_data(category_income = category_slug)
+    await callback.message.answer("Введите название дохода 📝")
+    await callback.answer()
+
+
+@router.message(Income.category_income)
+async def add_income_title_callback(message:Message, state: FSMContext):
+    user_input = message.text
+    if not user_input:
+        await message.reply("Пожалуйста, введите корректное название 🧐")
+        return
+    await state.set_state(Income.title_income)
+    await state.update_data(title_income = user_input.strip())
+    await message.answer("Введите сумму 💲")
+
+
+@router.message(Income.title_income)
+async def add_income_value_callback(message:Message, state: FSMContext):
+    user_input = message.text
+    if not user_input or not user_input.isdigit():
+        await message.reply("Пожалуйста, введите сумму в числовом формате 🔢")
+        return
+    await state.set_state(Income.value_income)
+    user_category = (await state.get_data()).get("category_income")
+    user_title = (await state.get_data()).get("title_income")
+    response = await post_income(user_category = user_category, user_value = user_input, user_title= user_title, telegram_id= message.from_user.id)
+    if response:
+        await message.answer("Запись успешно добавлена ✅")
+        await message.answer(f"Категория: {user_category}\n\nНазвание: {user_title}\n\nСумма: {user_input}\n\n", reply_markup= inline_keyboards.incomes_menu)
+        await state.clear()
+    else:
+        await message.answer("К сожалению не удалось создать запись, извините 😔", reply_markup= inline_keyboards.incomes_menu)
+        await state.clear()
+
+
+
+@router.callback_query(F.data == "last_income")
+async def last_income_callback(callback:CallbackQuery, state: FSMContext):
+    last_income = await get_last_income(telegram_id=callback.from_user.id)
+    if not last_income:
+        await callback.message.answer("Извините, не удалось получить последнюю запись 😞", reply_markup=inline_keyboards.incomes_menu)
+        return
+    user_category = last_income.get("category")
+    user_title = last_income.get("title")
+    user_input = last_income.get("value")
+    await callback.message.answer(f"Категория: {user_category}\n\nНазвание: {user_title}\n\nСумма: {user_input}\n\n", reply_markup= inline_keyboards.last_income_menu)
+    await callback.answer()
+
+
+@router.callback_query(F.data == "delete_last_income")
+async def delete_last_income_callback(callback:CallbackQuery, state: FSMContext):
+    result = await delete_last_income(telegram_id=callback.from_user.id)
+    if result:
+        await callback.message.answer("Запись успешно удалена 🗑️", reply_markup=inline_keyboards.incomes_menu)
+    else:
+        await callback.message.answer("Извините, не удалось удалить запись 😔", reply_markup=inline_keyboards.incomes_menu)
+    await callback.answer()
+#===========================================================================================================================
+# Расходы
+#===========================================================================================================================
+
+@router.callback_query(F.data == "add_expense")
+async def choose_expense_category_callback(callback:CallbackQuery, state: FSMContext):
+    expense_categories = (await state.get_data()).get("expense_categories", default_expenses)
+    await callback.message.answer("Выберите категорию 🛒", reply_markup= await inline_keyboards.get_inline_expense_options(options=expense_categories))
+    await callback.answer()
+
+@router.callback_query(F.data.startswith("expense_"))
+async def add_expense_category_callback(callback:CallbackQuery, state: FSMContext):
+    await state.set_state(Expense.category_expense)
+    category_slug = callback.data.split("_")[1]
+    await state.update_data(category_expense = category_slug)
+    await callback.message.answer("Введите название расхода 📝")
+    await callback.answer()
+
+
+@router.message(Expense.category_expense)
+async def add_expense_title_callback(message:Message, state: FSMContext):
+    user_input = message.text
+    if not user_input:
+        await message.reply("Пожалуйста, введите корректное название 🧐")
+        return
+    await state.set_state(Expense.title_expense)
+    await state.update_data(title_expense = user_input.strip())
+    await message.answer("Введите сумму 💲")
+
+
+@router.message(Expense.title_expense)
+async def add_expense_value_callback(message:Message, state: FSMContext):
+    user_input = message.text
+    if not user_input or not user_input.isdigit():
+        await message.reply("Пожалуйста, введите сумму в числовом формате 🔢")
+        return
+    await state.set_state(Expense.value_expense)
+    user_category = (await state.get_data()).get("category_expense")
+    user_title = (await state.get_data()).get("title_expense")
+    response = await post_expense(user_category = user_category, user_value = user_input, user_title= user_title, telegram_id= message.from_user.id)
+    if response:
+        await message.answer("Запись успешно добавлена ✅")
+        await message.answer(f"Категория: {user_category}\n\nНазвание: {user_title}\n\nСумма: {user_input}\n\n", reply_markup= inline_keyboards.expenses_menu)
+        await state.clear()
+    else:
+        await message.answer("К сожалению не удалось создать запись, извините 😔", reply_markup= inline_keyboards.expenses_menu)
+        await state.clear()
+
+
+
+@router.callback_query(F.data == "last_expense")
+async def last_expense_callback(callback:CallbackQuery, state: FSMContext):
+    last_expense = await get_last_expense(telegram_id=callback.from_user.id)
+    if not last_expense:
+        await callback.message.answer("Извините, не удалось получить последнюю запись 😞", reply_markup=inline_keyboards.expenses_menu)
+        return
+    user_category = last_expense.get("category")
+    user_title = last_expense.get("title")
+    user_input = last_expense.get("value")
+    await callback.message.answer(f"Категория: {user_category}\n\nНазвание: {user_title}\n\nСумма: {user_input}\n\n", reply_markup= inline_keyboards.last_expense_menu)
+    await callback.answer()
+
+
+@router.callback_query(F.data == "delete_last_expense")
+async def delete_last_expense_callback(callback:CallbackQuery, state: FSMContext):
+    result = await delete_last_expense(telegram_id=callback.from_user.id)
+    if result:
+        await callback.message.answer("Запись успешно удалена 🗑️", reply_markup=inline_keyboards.expenses_menu)
+    else:
+        await callback.message.answer("Извините, не удалось удалить запись 😔", reply_markup=inline_keyboards.expenses_menu)
     await callback.answer()
 
 #===========================================================================================================================
@@ -137,7 +304,7 @@ async def incomes_menu_callback(callback:CallbackQuery):
 
 @router.callback_query(F.data == "stats_menu")
 async def stats_menu_callback(callback:CallbackQuery):
-    await callback.message.answer("Что будем анализировать?", reply_markup=inline_keyboards.stats_menu)
+    await callback.message.answer("Что будем анализировать? 🧐", reply_markup=inline_keyboards.stats_menu)
     await callback.answer()
 
 
@@ -145,7 +312,7 @@ async def stats_menu_callback(callback:CallbackQuery):
 async def written_report_callback(callback:CallbackQuery, state:FSMContext):
     stats_data = await get_text_report(telegram_id=callback.from_user.id)
     if stats_data is None:
-        await callback.message.answer(text="Извините, сейчас не можем создать вам статистику", reply_markup=inline_keyboards.home)
+        await callback.message.answer(text="Извините, сейчас не можем создать вам статистику 😔", reply_markup=inline_keyboards.home)
         return
     total_expenses = stats_data['expenses']['total']['total_expenses']
     total_incomes = stats_data['incomes']['total']['total_incomes']
@@ -208,13 +375,13 @@ async def visual_report_callback(callback: CallbackQuery):
     if not image_bytes_list:
         logging.error("Failed to get visual report images from API.")
         await callback.message.answer(
-            "К сожалению, не удалось сгенерировать отчёт.",
+            "К сожалению, не удалось сгенерировать отчёт. Возможно, недостаточно данных 😔",
             reply_markup=inline_keyboards.report)
         await callback.answer()
         return
     
     first_photo = BufferedInputFile(image_bytes_list[0], filename="report_1.png")
-    caption_text = "📊 Вот ваш визуальный отчёт о финансах!"
+    caption_text = "📊 Вот ваш визуальный отчёт о финансах! 📈"
     await callback.message.answer_photo(
         photo=first_photo,
         caption=caption_text
@@ -228,7 +395,7 @@ async def visual_report_callback(callback: CallbackQuery):
         await callback.message.answer_photo(
             photo=photo_file
         )
-    await callback.message.answer("Готово!", reply_markup=inline_keyboards.report)
+    await callback.message.answer("Готово! 🎉", reply_markup=inline_keyboards.report)
     
     await callback.answer()
 #===========================================================================================================================
@@ -242,8 +409,6 @@ async def all_other_messages(message: Message):
     if photo_data:
         photo_to_send = BufferedInputFile(photo_data, filename="cat_error.jpg")
         await message.bot.send_photo(chat_id=message.chat.id, photo=photo_to_send)
-
-
 
 async def set_user_info(message:Message, state:FSMContext):
     stats_data = await get_text_report(telegram_id=message.from_user.id)
